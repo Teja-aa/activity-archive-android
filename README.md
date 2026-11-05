@@ -29,8 +29,8 @@ A small, read-only Android app that imports usage history already exposed by And
 ## Build the app
 
 1. Install Android Studio with Android SDK Platform 36 and JDK 17.
-2. This project uses Android Gradle Plugin 8.10.1, which requires Gradle 8.11.1 and supports API 36. If Gradle 8.11.1 is not already installed, install it from the official Gradle distribution.
-3. In this folder, generate the standard wrapper once with `gradle wrapper --gradle-version 8.11.1`, then open the project folder in Android Studio and allow Gradle sync to download the Android Gradle Plugin and Kotlin 2.4.21 plugin.
+2. This project uses Android Gradle Plugin 8.10.1, Kotlin Gradle Plugin 2.4.21, and Gradle 8.14.4. The Kotlin JVM target is configured with the current `compilerOptions` DSL.
+3. In this folder, generate the standard wrapper once with `gradle wrapper --gradle-version 8.14.4`, then open the project folder in Android Studio and allow Gradle sync to download the Android Gradle Plugin and Kotlin plugin.
 4. Connect the OnePlus Nord CE 4 with USB debugging enabled, or use Android Studio's wireless deployment, then press **Run**. (USB debugging is only for installing/debugging the app; normal app use does not need ADB.)
 5. On the phone, open **Settings → Apps → Special app access → Usage access** (wording can vary by OxygenOS release) and enable **Activity Archive**. You can also tap the app's Usage Access button to open the relevant Settings screen.
 6. Return to Activity Archive and tap **Import history available on this phone**.
@@ -64,4 +64,4 @@ This project includes `.github/workflows/build-apk.yml`. To build the APK in Git
 5. Open the completed workflow run and download the `activity-archive-debug-apk` artifact.
 6. Extract the downloaded artifact ZIP to get `app-debug.apk`, then transfer it to the phone and install it. Android may ask you to allow installation from that source.
 
-The workflow uses GitHub-hosted Linux runners, Java 17, Android SDK Platform 36, Build Tools 36.0.0, and Gradle 8.11.1. The APK is a debug build for testing, not a Play Store release. GitHub Actions must be enabled for the repository.
+The workflow uses GitHub-hosted Linux runners, Java 17, Android SDK Platform 36, Build Tools 36.0.0, and Gradle 8.14.4. The APK is a debug build for testing, not a Play Store release. GitHub Actions must be enabled for the repository.

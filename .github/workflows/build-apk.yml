@@ -31,6 +31,12 @@ jobs:
         with:
           gradle-version: '8.14.4'
 
+      - name: Confirm build tool versions
+        run: |
+          java -version
+          gradle --version
+          grep -n "compilerOptions\|jvmTarget\|kotlinOptions" app/build.gradle.kts
+
       - name: Build debug APK
         run: gradle --no-daemon :app:assembleDebug
 

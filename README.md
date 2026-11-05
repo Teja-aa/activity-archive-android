@@ -64,4 +64,4 @@ This project includes `.github/workflows/build-apk.yml`. To build the APK in Git
 5. Open the completed workflow run and download the `activity-archive-debug-apk` artifact.
 6. Extract the downloaded artifact ZIP to get `app-debug.apk`, then transfer it to the phone and install it. Android may ask you to allow installation from that source.
 
-The workflow uses GitHub-hosted Linux runners, Java 17, Android SDK Platform 36, Build Tools 36.0.0, and Gradle 8.14.4. The APK is a debug build for testing, not a Play Store release. GitHub Actions must be enabled for the repository.
+The workflow uses GitHub-hosted Linux runners, Java 17, Android SDK Platform 36, Build Tools 36.0.0, and Gradle 8.14.4. The app module uses Kotlin `compilerOptions` (not the deprecated `android.kotlinOptions` DSL). If you already uploaded an earlier copy, replace the repository files with this ZIP version, especially `app/build.gradle.kts` and `.github/workflows/build-apk.yml`. The APK is a debug build for testing, not a Play Store release. GitHub Actions must be enabled for the repository.

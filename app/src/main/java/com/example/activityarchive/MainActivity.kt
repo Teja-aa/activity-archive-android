@@ -49,7 +49,7 @@ private data class DailyUsage(
     val packageName: String,
     val appName: String,
     val foregroundMs: Long,
-    val launches: Int
+    val launches: Int // -1 means Android did not provide this metric.
 )
 
 private data class AppSession(
@@ -527,7 +527,7 @@ class MainActivity : Activity() {
             .filter { it.packageName != packageName && it.totalTimeInForeground > 0L }
             .mapNotNull { stats ->
                 val day = try {
-                    Instant.ofEpochMilli(stats.beginTimeStamp).atZone(ZoneId.systemDefault()).toLocalDate().format(DAY_FORMAT)
+                    Instant.ofEpochMilli(stats.firstTimeStamp).atZone(ZoneId.systemDefault()).toLocalDate().format(DAY_FORMAT)
                 } catch (_: Exception) {
                     return@mapNotNull null
                 }
@@ -536,7 +536,7 @@ class MainActivity : Activity() {
                     stats.packageName,
                     labels[stats.packageName] ?: stats.packageName,
                     stats.totalTimeInForeground,
-                    if (android.os.Build.VERSION.SDK_INT >= 29) stats.appLaunchCount else 0
+                    -1 // Android does not expose appLaunchCount in the public UsageStats API.
                 )
             }
     }
@@ -624,7 +624,7 @@ class MainActivity : Activity() {
             out.append(listOf("event", csv(formatDateTime(e.timestamp)), csv(readableEvent(e)), csv(e.appName), csv(e.packageName), "", "", csv(e.detail)).joinToString(",")).append('\n')
         }
         usages.sortedWith(compareBy<DailyUsage> { it.day }.thenBy { it.appName }).forEach { u ->
-            out.append(listOf("daily_usage", csv(u.day), "daily app usage summary", csv(u.appName), csv(u.packageName), u.foregroundMs.toString(), u.launches.toString(), "Android aggregated usage; not an exact session timeline").joinToString(",")).append('\n')
+            out.append(listOf("daily_usage", csv(u.day), "daily app usage summary", csv(u.appName), csv(u.packageName), u.foregroundMs.toString(), if (u.launches >= 0) u.launches.toString() else "", "Android aggregated usage; launch count is not exposed by the public UsageStats API").joinToString(",")).append('\n')
         }
         return out.toString()
     }
@@ -634,14 +634,14 @@ class MainActivity : Activity() {
             "    {\"timestamp\":${it.timestamp},\"dateTime\":${json(formatDateTime(it.timestamp))},\"type\":${json(it.type)},\"event\":${json(readableEvent(it))},\"appName\":${json(it.appName)},\"packageName\":${json(it.packageName)},\"detail\":${json(it.detail)}}"
         }
         val usageJson = usages.joinToString(",\n") {
-            "    {\"date\":${json(it.day)},\"appName\":${json(it.appName)},\"packageName\":${json(it.packageName)},\"foregroundMs\":${it.foregroundMs},\"launchCount\":${it.launches}}"
+            "    {\"date\":${json(it.day)},\"appName\":${json(it.appName)},\"packageName\":${json(it.packageName)},\"foregroundMs\":${it.foregroundMs},\"launchCount\":${if (it.launches >= 0) it.launches.toString() else "null"}}"
         }
         val sessionJson = sessions.joinToString(",\n") {
             "    {\"appName\":${json(it.appName)},\"packageName\":${json(it.packageName)},\"start\":${json(formatDateTime(it.start))},\"end\":${json(formatDateTime(it.end))},\"durationMs\":${it.durationMs}}"
         }
         return """{
   "generatedAt": ${json(formatDateTime(System.currentTimeMillis()))},
-  "note": "Read-only export of Android history available when imported. Daily usage is aggregated data; session durations are calculated only from matching foreground/background events.",
+  "note": "Read-only export of Android history available when imported. Daily usage is aggregated data; session durations are calculated only from matching foreground/background events. Launch counts are not exposed by the public UsageStats API.",
   "events": [
 $eventJson
   ],
@@ -665,7 +665,7 @@ $sessionJson
             "<tr><td>${html(formatDateTime(it.timestamp))}</td><td>${html(readableEvent(it))}</td><td>${html(it.appName)}</td><td>${html(it.detail)}</td></tr>"
         }
         val usageRows = usages.sortedWith(compareByDescending<DailyUsage> { it.day }.thenByDescending { it.foregroundMs }).joinToString("\n") {
-            "<tr><td>${html(it.day)}</td><td>${html(it.appName)}</td><td>${html(formatDuration(it.foregroundMs))}</td><td>${it.launches}</td></tr>"
+            "<tr><td>${html(it.day)}</td><td>${html(it.appName)}</td><td>${html(formatDuration(it.foregroundMs))}</td><td>${if (it.launches >= 0) it.launches.toString() else "Not available"}</td></tr>"
         }
         val sessionRows = sessions.joinToString("\n") {
             "<tr><td>${html(it.appName)}</td><td>${html(formatDateTime(it.start))}</td><td>${html(formatDateTime(it.end))}</td><td>${html(formatDuration(it.durationMs))}</td></tr>"
@@ -675,7 +675,7 @@ $sessionJson
 <h1>Activity Archive</h1><p class="muted">Generated ${html(formatDateTime(System.currentTimeMillis()))}. This report contains only history Android exposed when imported and data previously saved in this app.</p>
 <div class="cards"><div class="card"><div class="muted">Timeline events</div><div class="value">${events.size}</div></div><div class="card"><div class="muted">Matched app sessions</div><div class="value">${sessions.size}</div></div><div class="card"><div class="muted">Aggregated app foreground time</div><div class="value">${html(formatDuration(total))}</div></div></div>
 <section><h2>Most-used apps</h2>${if (bars.isBlank()) "<p class=\"muted\">No daily usage summaries are available.</p>" else bars}</section>
-<section><h2>Daily app usage (Android aggregates)</h2><p class="muted">This is aggregated usage, not a reconstructed exact open/close timeline.</p><table><tr><th>Date</th><th>App</th><th>Foreground time</th><th>Launches</th></tr>${usageRows}</table></section>
+<section><h2>Daily app usage (Android aggregates)</h2><p class="muted">This is aggregated usage, not a reconstructed exact open/close timeline.</p><table><tr><th>Date</th><th>App</th><th>Foreground time</th><th>Launch count</th></tr>${usageRows}</table></section>
 <section><h2>Complete app sessions</h2><p class="muted">Durations are calculated only where a foreground event has a matching background event.</p><table><tr><th>App</th><th>Start</th><th>Backgrounded</th><th>Duration</th></tr>${sessionRows}</table></section>
 <section><h2>Activity timeline</h2><table><tr><th>Timestamp</th><th>Event</th><th>App / source</th><th>Details</th></tr>${eventRows}</table></section>
 <p class="muted">Privacy: generated locally by Activity Archive. No network upload.</p></body></html>""".trimIndent()
@@ -688,7 +688,7 @@ $sessionJson
         appendLine("Complete paired sessions: ${sessions.size}")
         appendLine("\nDAILY APP USAGE")
         usages.sortedWith(compareBy<DailyUsage> { it.day }.thenBy { it.appName }).forEach {
-            appendLine("${it.day} | ${it.appName} | ${formatDuration(it.foregroundMs)} | launches: ${it.launches}")
+            appendLine("${it.day} | ${it.appName} | ${formatDuration(it.foregroundMs)} | launches: ${if (it.launches >= 0) it.launches.toString() else "not exposed by Android"}")
         }
         appendLine("\nCOMPLETE APP SESSIONS")
         sessions.sortedBy { it.start }.forEach {

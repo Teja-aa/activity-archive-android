@@ -1,0 +1,41 @@
+
+workflows:
+  activity-archive-debug:
+    name: Activity Archive - Debug APK
+    max_build_duration: 60
+    instance_type: mac_mini_m2
+
+    environment:
+      java: 17
+
+    scripts:
+      - name: Configure Android SDK
+        script: |
+          echo "sdk.dir=$ANDROID_SDK_ROOT" > "$CM_BUILD_DIR/local.properties"
+
+      - name: Install Android SDK components
+        script: |
+          SDKMANAGER="$(find "$ANDROID_SDK_ROOT/cmdline-tools" -name sdkmanager -type f 2>/dev/null | head -n 1)"
+
+          if [ -n "$SDKMANAGER" ]; then
+            yes | "$SDKMANAGER" --licenses >/dev/null || true
+            "$SDKMANAGER" "platforms;android-36" "build-tools;36.0.0"
+          fi
+
+      - name: Download Gradle
+        script: |
+          GRADLE_VERSION=8.14.4
+
+          curl -fsSL \
+            "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" \
+            -o /tmp/gradle.zip
+
+          unzip -q /tmp/gradle.zip -d /tmp
+
+      - name: Build Android APK
+        script: |
+          /tmp/gradle-8.14.4/bin/gradle \
+            --no-daemon :app:assembleDebug
+
+    artifacts:
+      - app/build/outputs/apk/debug/app-debug.apk
